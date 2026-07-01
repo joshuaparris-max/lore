@@ -16,10 +16,6 @@ import type { DialogueNode } from '../state/gameStore';
  */
 export const ORACLE_INTRO_NODE_ID = 'oracle-intro';
 
-/** Stable id for the Oracle interactable — shared by the 3D object, the
- *  proximity check, and (in tests) the deterministic "approach" helper. */
-export const ORACLE_INTERACTABLE_ID = 'left-eye-nerve-oracle';
-
 const CULT = 'cult-of-the-left-eye';
 
 export const oracleDialogue: DialogueNode[] = [

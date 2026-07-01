@@ -21,8 +21,10 @@ declare global {
           reputation: Record<string, number>;
           activeDialogueNodeId: string | null;
           isSceneReady: boolean;
+          currentRoomId: string;
         };
       };
+      approach: (interactableId: string) => void;
       approachOracle: () => void;
       leaveOracle: () => void;
       forceD20: (value: number | null) => void;
@@ -142,7 +144,7 @@ test.describe('Dreadnought Drifters — Oracle vertical slice', () => {
     await openOracleDialogue(page);
 
     // Reputation starts neutral in the footer.
-    await expect(page.getByTestId('rep-cult')).toHaveText('+0');
+    await expect(page.getByTestId('rep-cult-of-the-left-eye')).toHaveText('+0');
     expect(await readCultRep(page)).toBe(0);
 
     // Force a d20 of 15: 15 + CHA mod (+2) + proficiency (+2) = 19 vs DC 13 → success.
@@ -158,7 +160,7 @@ test.describe('Dreadnought Drifters — Oracle vertical slice', () => {
     await expect(page.getByTestId('roll-result')).toHaveText('SUCCESS');
 
     // Reputation rises by +2 in both the UI and the store.
-    await expect(page.getByTestId('rep-cult')).toHaveText('+2');
+    await expect(page.getByTestId('rep-cult-of-the-left-eye')).toHaveText('+2');
     expect(await readCultRep(page)).toBe(2);
   });
 
@@ -174,7 +176,7 @@ test.describe('Dreadnought Drifters — Oracle vertical slice', () => {
     await expect(page.getByTestId('roll-total')).toHaveText('6');
     await expect(page.getByTestId('roll-result')).toHaveText('FAILURE');
 
-    await expect(page.getByTestId('rep-cult')).toHaveText('-1');
+    await expect(page.getByTestId('rep-cult-of-the-left-eye')).toHaveText('-1');
     expect(await readCultRep(page)).toBe(-1);
   });
 
@@ -188,7 +190,7 @@ test.describe('Dreadnought Drifters — Oracle vertical slice', () => {
     await page.keyboard.press('Digit2');
 
     await expect(page.getByTestId('roll-result')).toHaveText('SUCCESS');
-    await expect(page.getByTestId('rep-cult')).toHaveText('+2');
+    await expect(page.getByTestId('rep-cult-of-the-left-eye')).toHaveText('+2');
 
     // The success node has a single "leave" choice — key "1" closes the dialogue.
     await page.keyboard.press('Digit1');
@@ -210,7 +212,41 @@ test.describe('Dreadnought Drifters — Oracle vertical slice', () => {
     // cult-join #1 = accept-join -> lands on the "accepted" node (onEnter +2)
     await page.keyboard.press('Digit1');
     await expect(page.getByTestId('dialogue-body')).toContainText('Welcome, initiate');
-    await expect(page.getByTestId('rep-cult')).toHaveText('+2');
+    await expect(page.getByTestId('rep-cult-of-the-left-eye')).toHaveText('+2');
+  });
+
+  test('a door moves the player to another room', async ({ page }) => {
+    await gotoGame(page);
+    expect(await page.evaluate(() => window.__DRIFTERS_TEST__!.store.getState().currentRoomId)).toBe('cortex');
+    await expect(page.getByTestId('room-label')).toHaveText('The Dreadnought Cortex');
+
+    // Stand at the door to the Bile Markets and step through it.
+    await page.evaluate(() => window.__DRIFTERS_TEST__!.approach('door-cortex-market'));
+    await expect(page.getByTestId('interaction-prompt')).toContainText('Bile Markets');
+    await page.keyboard.press('KeyE');
+
+    expect(await page.evaluate(() => window.__DRIFTERS_TEST__!.store.getState().currentRoomId)).toBe('bile-markets');
+    await expect(page.getByTestId('room-label')).toHaveText('The Bile Markets');
+  });
+
+  test('a second NPC (the Bile Markets merchant) has its own dialogue', async ({ page }) => {
+    await gotoGame(page);
+
+    // Travel to the market, then talk to Gurgle.
+    await page.evaluate(() => window.__DRIFTERS_TEST__!.approach('door-cortex-market'));
+    await page.keyboard.press('KeyE');
+    await expect(page.getByTestId('room-label')).toHaveText('The Bile Markets');
+
+    await page.evaluate(() => window.__DRIFTERS_TEST__!.approach('gurgle'));
+    await page.keyboard.press('KeyE');
+    await expect(page.getByTestId('dialogue-overlay')).toBeVisible();
+    await expect(page.getByTestId('dialogue-speaker')).toHaveText('Gurgle, Purveyor of Viscera');
+
+    // Successful haggle (#2) raises the Bile Merchants' Guild reputation.
+    await forceD20(page, 18);
+    await page.keyboard.press('Digit2');
+    await expect(page.getByTestId('roll-result')).toHaveText('SUCCESS');
+    await expect(page.getByTestId('rep-bile-merchants-guild')).toHaveText('+2');
   });
 
   test('every dialogue link resolves to a real node (graph integrity)', async ({ page }) => {

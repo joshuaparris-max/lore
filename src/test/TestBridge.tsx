@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useGameStore, __setForcedD20 } from '../state/gameStore';
-import { ORACLE_INTERACTABLE_ID } from '../data/oracleDialogue';
+
+const ORACLE_ID = 'oracle';
 
 /**
  * Test-only bridge for Playwright.
@@ -16,13 +17,15 @@ declare global {
     __DRIFTERS_TEST__?: {
       /** The live Zustand store (getState / setState / subscribe). */
       store: typeof useGameStore;
-      /** Simulate the player standing next to the Oracle (no walking needed). */
+      /** Simulate the player standing next to any interactable (no walking needed). */
+      approach: (interactableId: string) => void;
+      /** Convenience: stand next to the Oracle. */
       approachOracle: () => void;
-      /** Simulate the player leaving the Oracle. */
+      /** Simulate the player leaving all interactables. */
       leaveOracle: () => void;
       /** Force the next d20 face; pass null to restore real randomness. */
       forceD20: (value: number | null) => void;
-      /** The interactable id the `E` handler checks against. */
+      /** The Oracle interactable id the `E` handler checks against. */
       oracleId: string;
     };
   }
@@ -32,10 +35,11 @@ export default function TestBridge(): null {
   useEffect(() => {
     window.__DRIFTERS_TEST__ = {
       store: useGameStore,
-      approachOracle: () => useGameStore.getState().setNearbyInteractable(ORACLE_INTERACTABLE_ID),
+      approach: (id) => useGameStore.getState().setNearbyInteractable(id),
+      approachOracle: () => useGameStore.getState().setNearbyInteractable(ORACLE_ID),
       leaveOracle: () => useGameStore.getState().setNearbyInteractable(null),
       forceD20: (value) => __setForcedD20(value),
-      oracleId: ORACLE_INTERACTABLE_ID,
+      oracleId: ORACLE_ID,
     };
     return () => {
       __setForcedD20(null);

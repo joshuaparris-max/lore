@@ -4,10 +4,12 @@ import {
   type AbilityName,
   type SkillCheckResult,
 } from '../state/gameStore';
+import { getInteractableById, getRoomById, FACTION_NAMES } from '../data/world';
 
 /**
  * DOM overlays that sit on top of the 3D canvas:
- *   - InteractionPrompt : the "Press E to commune..." hint when near the Oracle.
+ *   - RoomLabel         : current room name (top-left).
+ *   - InteractionPrompt : the "Press E to ..." hint when near an interactable.
  *   - DialogueOverlay   : the conversation panel + d20 roll breakdown.
  *
  * These are pure views over the Zustand store — no local narrative state.
@@ -34,10 +36,26 @@ export function InteractionPrompt(): JSX.Element | null {
 
   // Only prompt when something is in reach and we're not already talking.
   if (!nearbyId || inDialogue) return null;
+  const def = getInteractableById(nearbyId);
+  if (!def) return null;
 
+  const verb = def.kind === 'npc' ? 'commune with' : 'enter';
   return (
     <div data-testid="interaction-prompt" style={promptStyle}>
-      Press <kbd style={kbdStyle}>E</kbd> to commune with the Left Eye Nerve Oracle
+      Press <kbd style={kbdStyle}>E</kbd> to {verb} {def.label}
+    </div>
+  );
+}
+
+/** Current room name, shown top-left so the player knows where they are. */
+export function RoomLabel(): JSX.Element | null {
+  const roomId = useGameStore((s) => s.currentRoomId);
+  const room = getRoomById(roomId);
+  if (!room) return null;
+
+  return (
+    <div data-testid="room-label" style={roomLabelStyle}>
+      {room.name}
     </div>
   );
 }
@@ -131,8 +149,6 @@ export function DialogueOverlay(): JSX.Element | null {
   const node = nodes[nodeId];
   if (!node) return null;
 
-  const cultRep = reputation['cult-of-the-left-eye'] ?? 0;
-
   return (
     <div style={backdropStyle}>
       <div data-testid="dialogue-overlay" style={panelStyle}>
@@ -168,12 +184,16 @@ export function DialogueOverlay(): JSX.Element | null {
         <div style={hintStyle}>Press 1&ndash;{node.choices.length} or click to choose</div>
 
         <div style={footerStyle}>
-          <span>
-            Cult of the Left Eye:&nbsp;
-            <strong data-testid="rep-cult" style={{ color: cultRep >= 0 ? '#7dff9b' : '#ff6b6b' }}>
-              {signed(cultRep)}
-            </strong>
-          </span>
+          <div style={factionsStyle}>
+            {Object.entries(reputation).map(([id, value]) => (
+              <span key={id} style={factionItemStyle}>
+                {FACTION_NAMES[id] ?? id}:&nbsp;
+                <strong data-testid={`rep-${id}`} style={{ color: value >= 0 ? '#7dff9b' : '#ff6b6b' }}>
+                  {signed(value)}
+                </strong>
+              </span>
+            ))}
+          </div>
           <button type="button" data-testid="dialogue-close" style={closeButtonStyle} onClick={endDialogue}>
             Close
           </button>
@@ -210,6 +230,22 @@ const kbdStyle: CSSProperties = {
   color: '#001018',
   borderRadius: 4,
   fontWeight: 700,
+};
+
+const roomLabelStyle: CSSProperties = {
+  position: 'absolute',
+  top: 16,
+  left: 16,
+  padding: '6px 14px',
+  background: 'rgba(10, 4, 6, 0.6)',
+  border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: 8,
+  color: '#f2e9ec',
+  fontFamily: 'system-ui, sans-serif',
+  fontSize: 14,
+  fontWeight: 700,
+  letterSpacing: 0.5,
+  pointerEvents: 'none',
 };
 
 const backdropStyle: CSSProperties = {
@@ -366,10 +402,21 @@ const footerStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
+  gap: 12,
   marginTop: 18,
   paddingTop: 14,
   borderTop: '1px solid #33232b',
   fontSize: 14,
+};
+
+const factionsStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '4px 16px',
+};
+
+const factionItemStyle: CSSProperties = {
+  whiteSpace: 'nowrap',
 };
 
 const closeButtonStyle: CSSProperties = {

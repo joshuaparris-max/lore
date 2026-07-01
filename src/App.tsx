@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import DreadnoughtCortex from './components/DreadnoughtCortex';
-import { DialogueOverlay, InteractionPrompt } from './components/DialogueOverlay';
+import { DialogueOverlay, InteractionPrompt, RoomLabel } from './components/DialogueOverlay';
 import TestBridge from './test/TestBridge';
 import { useGameStore } from './state/gameStore';
-import { oracleDialogue } from './data/oracleDialogue';
+import { allDialogue } from './data/dialogues';
 
 /** True only when the app is opened with `?e2e=1` — gates the test bridge. */
 const isE2E = (): boolean =>
@@ -16,9 +16,9 @@ const isE2E = (): boolean =>
 export default function App(): JSX.Element {
   const registerDialogueNodes = useGameStore((s) => s.registerDialogueNodes);
 
-  // Load the Oracle's conversation graph into the store once, on mount.
+  // Load every NPC's conversation graph into the store once, on mount.
   useEffect(() => {
-    registerDialogueNodes(oracleDialogue);
+    registerDialogueNodes(allDialogue);
   }, [registerDialogueNodes]);
 
   return (
@@ -27,6 +27,7 @@ export default function App(): JSX.Element {
       style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}
     >
       <DreadnoughtCortex />
+      <RoomLabel />
       <InteractionPrompt />
       <DialogueOverlay />
       {isE2E() && <TestBridge />}

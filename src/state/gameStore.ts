@@ -107,6 +107,8 @@ interface GameState {
   nearbyInteractableId: string | null;
   /** True once the 3D controller has mounted and keyboard input is live. */
   isSceneReady: boolean;
+  /** id of the room the player is currently in. */
+  currentRoomId: string;
 
   /* --- Actions --- */
   setActiveDialogueNode: (nodeId: string | null) => void;
@@ -129,6 +131,8 @@ interface GameState {
   setNearbyInteractable: (id: string | null) => void;
   /** Mark the 3D scene/controller as mounted (input live) or torn down. */
   setSceneReady: (ready: boolean) => void;
+  /** Move the player to another room. */
+  setCurrentRoom: (roomId: string) => void;
   /** @internal Move to a node and fire its onEnter effect. Use the actions above. */
   _travelTo: (nodeId: string) => void;
 }
@@ -176,9 +180,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   proficiencyBonus: 2,
 
-  // Seed the first faction so the store is immediately usable in the UI.
+  // Seed the known factions so the reputation panel shows standings from the
+  // start. Keys must match the ids used by dialogue onEnter effects.
   reputation: {
     'cult-of-the-left-eye': 0,
+    'bile-merchants-guild': 0,
+    'order-of-the-weeping-sinus': 0,
   },
 
   activeDialogueNodeId: null,
@@ -187,6 +194,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   nearbyInteractableId: null,
   isSceneReady: false,
+  currentRoomId: 'cortex',
 
   setActiveDialogueNode: (nodeId) => set({ activeDialogueNodeId: nodeId }),
 
@@ -284,6 +292,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setNearbyInteractable: (id) => set({ nearbyInteractableId: id }),
 
   setSceneReady: (ready) => set({ isSceneReady: ready }),
+
+  setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),
 
   // Internal: move to a node and fire its onEnter effect exactly once per entry.
   _travelTo: (nodeId: string) => {
