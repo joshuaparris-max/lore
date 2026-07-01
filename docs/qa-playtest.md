@@ -44,7 +44,7 @@ Deterministic dice used:
 - **Success:** d20 = 15 → 15 + CHA mod (+2) + proficiency (+2) = **19** vs DC 13.
 - **Failure:** d20 = 2 → 2 + 2 + 2 = **6** vs DC 13 (and not a natural 1).
 
-## Coverage (8 cases — all passing)
+## Coverage (11 cases — all passing)
 
 | # | Test | Verifies |
 | --- | --- | --- |
@@ -52,10 +52,18 @@ Deterministic dice used:
 | 2 | loads without severe console errors | no `console.error` / `pageerror` (benign GL/font noise filtered) |
 | 3 | interaction prompt only when near | prompt absent by default, appears on approach |
 | 4 | pressing E opens dialogue | real `E` handler opens overlay, prompt hides |
-| 5 | speaker, body, all choices render | speaker text, non-empty body, all 3 intro choices |
+| 5 | speaker, body, all choices render | speaker text, non-empty body, all 6 intro choices |
 | 6 | successful Persuasion → reputation up | roll breakdown (d20/mod/prof/total/DC), SUCCESS, rep `+0`→`+2` |
 | 7 | failed Persuasion → reputation down | roll breakdown, FAILURE, rep `-1` |
-| 8 | close resumes scene, E works again | overlay closes, store cleared, E re-opens dialogue |
+| 8 | number keys select options | `2` picks Persuasion, `1` leaves — no mouse needed |
+| 9 | deep branch traversal (keyboard) | intro → cult → join → accept, rep `+2` several nodes deep |
+| 10 | dialogue graph integrity | every `nextNodeId`/`failureNodeId` resolves to a real node |
+| 11 | close resumes scene, E works again | overlay closes, store cleared, E re-opens dialogue |
+
+> Note: the deep-traversal test drives the tree with **number keys** rather than
+> clicks. Rapid multi-hop *clicking* under headless Chromium hits Playwright's
+> actionability hit-test flakiness against the constantly-repainting WebGL canvas
+> (single clicks are fine). Keyboard is the robust primary path anyway.
 
 ## Stable selectors added
 

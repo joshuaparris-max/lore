@@ -128,12 +128,13 @@ test.describe('Dreadnought Drifters — Oracle vertical slice', () => {
     await expect(page.getByTestId('dialogue-speaker')).toHaveText('The Left Eye Nerve Oracle');
     await expect(page.getByTestId('dialogue-body')).not.toBeEmpty();
 
-    // The intro node offers exactly three choices.
+    // The intro node fans out into six choices (lore / persuade / cult / rival /
+    // steer / leave), each an entry point into a deeper branch.
     const choices = page.getByTestId('dialogue-choices').locator('button');
-    await expect(choices).toHaveCount(3);
-    await expect(page.getByTestId('choice-ask-lore')).toBeVisible();
-    await expect(page.getByTestId('choice-persuade')).toBeVisible();
-    await expect(page.getByTestId('choice-leave-intro')).toBeVisible();
+    await expect(choices).toHaveCount(6);
+    for (const id of ['ask-lore', 'persuade', 'ask-cult', 'ask-rival', 'ask-steer', 'leave-intro']) {
+      await expect(page.getByTestId(`choice-${id}`)).toBeVisible();
+    }
   });
 
   test('a SUCCESSFUL Persuasion check shows the full roll breakdown and raises reputation', async ({ page }) => {
@@ -192,6 +193,45 @@ test.describe('Dreadnought Drifters — Oracle vertical slice', () => {
     // The success node has a single "leave" choice — key "1" closes the dialogue.
     await page.keyboard.press('Digit1');
     await expect(page.getByTestId('dialogue-overlay')).toHaveCount(0);
+  });
+
+  test('can traverse a deep branch by keyboard (intro -> cult -> join -> accept)', async ({ page }) => {
+    await gotoGame(page);
+    await openOracleDialogue(page);
+
+    // intro #3 = ask-cult
+    await page.keyboard.press('Digit3');
+    await expect(page.getByTestId('choice-join-ask')).toBeVisible();
+
+    // cult-hub #1 = join-ask
+    await page.keyboard.press('Digit1');
+    await expect(page.getByTestId('choice-accept-join')).toBeVisible();
+
+    // cult-join #1 = accept-join -> lands on the "accepted" node (onEnter +2)
+    await page.keyboard.press('Digit1');
+    await expect(page.getByTestId('dialogue-body')).toContainText('Welcome, initiate');
+    await expect(page.getByTestId('rep-cult')).toHaveText('+2');
+  });
+
+  test('every dialogue link resolves to a real node (graph integrity)', async ({ page }) => {
+    await gotoGame(page);
+    const broken = await page.evaluate(() => {
+      const nodes = (window.__DRIFTERS_TEST__!.store.getState() as unknown as {
+        dialogueNodes: Record<string, {
+          choices: { nextNodeId: string | null; check?: { failureNodeId?: string | null } }[];
+        }>;
+      }).dialogueNodes;
+      const bad: string[] = [];
+      for (const [id, node] of Object.entries(nodes)) {
+        for (const c of node.choices) {
+          if (c.nextNodeId && !nodes[c.nextNodeId]) bad.push(`${id} -> ${c.nextNodeId}`);
+          const fail = c.check?.failureNodeId;
+          if (fail && !nodes[fail]) bad.push(`${id} -> (fail) ${fail}`);
+        }
+      }
+      return bad;
+    });
+    expect(broken, `Broken dialogue links:\n${broken.join('\n')}`).toEqual([]);
   });
 
   test('closing dialogue resumes the scene and E works again', async ({ page }) => {
