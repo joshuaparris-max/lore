@@ -74,9 +74,8 @@ function FirstPersonController(): null {
   const move = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((_, delta) => {
-    // Lock the player in place while a conversation is on screen.
-    if (useGameStore.getState().activeDialogueNodeId !== null) return;
-
+    // Movement stays live even while a conversation is open, so the player can
+    // keep walking/looking and pick dialogue options with the number keys.
     const k = keys.current;
     const f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0);
     const r = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);

@@ -106,9 +106,25 @@ export function DialogueOverlay(): JSX.Element | null {
   const chooseDialogueOption = useGameStore((s) => s.chooseDialogueOption);
   const endDialogue = useGameStore((s) => s.endDialogue);
 
-  // Release the mouse whenever a conversation is open so buttons are clickable.
+  // While a conversation is open, number keys 1-9 pick the matching choice, so
+  // the player never has to drop first-person control to select an option.
+  // Reads the live node from the store so it always targets the current choices.
   useEffect(() => {
-    if (nodeId !== null && document.pointerLockElement) document.exitPointerLock();
+    if (nodeId === null) return undefined;
+    const onKey = (e: KeyboardEvent): void => {
+      const match = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
+      if (!match) return;
+      const state = useGameStore.getState();
+      const current = state.activeDialogueNodeId
+        ? state.dialogueNodes[state.activeDialogueNodeId]
+        : undefined;
+      const choice = current?.choices[Number(match[1]) - 1];
+      if (!choice) return;
+      e.preventDefault();
+      state.chooseDialogueOption(choice);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [nodeId]);
 
   if (nodeId === null) return null;
@@ -128,7 +144,7 @@ export function DialogueOverlay(): JSX.Element | null {
         {lastResult && <RollBreakdown result={lastResult} />}
 
         <div data-testid="dialogue-choices" style={choicesStyle}>
-          {node.choices.map((choice) => (
+          {node.choices.map((choice, index) => (
             <button
               key={choice.id}
               type="button"
@@ -136,7 +152,10 @@ export function DialogueOverlay(): JSX.Element | null {
               style={choiceButtonStyle}
               onClick={() => chooseDialogueOption(choice)}
             >
-              {choice.label}
+              <span style={choiceLabelStyle}>
+                <span style={choiceNumberStyle} aria-hidden>{index + 1}</span>
+                {choice.label}
+              </span>
               {choice.check && (
                 <span style={checkTagStyle}>
                   {titleCase(choice.check.ability)} DC {choice.check.dc}
@@ -145,6 +164,8 @@ export function DialogueOverlay(): JSX.Element | null {
             </button>
           ))}
         </div>
+
+        <div style={hintStyle}>Press 1&ndash;{node.choices.length} or click to choose</div>
 
         <div style={footerStyle}>
           <span>
@@ -262,6 +283,35 @@ const checkTagStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 700,
   whiteSpace: 'nowrap',
+};
+
+// Left side of a choice: the number badge + the label text.
+const choiceLabelStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+};
+
+// The "1 / 2 / 3" badge shown on each choice and used for keyboard selection.
+const choiceNumberStyle: CSSProperties = {
+  flexShrink: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 22,
+  height: 22,
+  borderRadius: 5,
+  background: '#4fc3ff',
+  color: '#001018',
+  fontSize: 13,
+  fontWeight: 800,
+};
+
+const hintStyle: CSSProperties = {
+  marginTop: 10,
+  fontSize: 12,
+  color: '#9aa7ad',
+  fontStyle: 'italic',
 };
 
 const rollPanelStyle: CSSProperties = {

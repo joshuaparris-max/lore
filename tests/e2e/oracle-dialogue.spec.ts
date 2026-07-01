@@ -177,6 +177,23 @@ test.describe('Dreadnought Drifters — Oracle vertical slice', () => {
     expect(await readCultRep(page)).toBe(-1);
   });
 
+  test('number keys select dialogue options without the mouse', async ({ page }) => {
+    await gotoGame(page);
+    await openOracleDialogue(page);
+
+    // Intro choices are 1=ask-lore, 2=persuade, 3=leave. Force success and pick
+    // the Persuasion option with the "2" key.
+    await forceD20(page, 15);
+    await page.keyboard.press('Digit2');
+
+    await expect(page.getByTestId('roll-result')).toHaveText('SUCCESS');
+    await expect(page.getByTestId('rep-cult')).toHaveText('+2');
+
+    // The success node has a single "leave" choice — key "1" closes the dialogue.
+    await page.keyboard.press('Digit1');
+    await expect(page.getByTestId('dialogue-overlay')).toHaveCount(0);
+  });
+
   test('closing dialogue resumes the scene and E works again', async ({ page }) => {
     await gotoGame(page);
     await openOracleDialogue(page);

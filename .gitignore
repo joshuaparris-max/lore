@@ -22,3 +22,5 @@ npm-debug.log*
 .idea/
 .vscode/
 *.local
+
+.vercel
